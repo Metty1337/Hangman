@@ -8,11 +8,16 @@ import java.util.*;
 public class Hangman {
 
 
-    public static final List<String> WORD_LIST = new ArrayList<>();
+    private static final List<String> WORDS = new ArrayList<>();
 
-    public static final BufferedReader READER = new BufferedReader(new InputStreamReader(System.in));
+    private static final BufferedReader READER = new BufferedReader(new InputStreamReader(System.in));
 
-    public static final String PATH = "src/nouns.txt";
+    private static final String PATH = "src/nouns.txt";
+
+    private final static String START = "н";
+
+    private final static String QUIT = "в";
+
 
     public static void main(String[] args) throws IOException {
 
@@ -22,38 +27,44 @@ public class Hangman {
         // main process
         while (true) {
             System.out.println("Начать новую игру или выйти? ('н' для новой игры и 'в' для выхода.)");
-            String choice = READER.readLine().toLowerCase();
+            String choice = READER.readLine();
 
-            if ("н".equals(choice)) {
-                startGame();
-            } else if ("в".equals(choice)) {
-                READER.close();
-                System.exit(0);
+            if (choice != null) {
+                if (START.equalsIgnoreCase(choice)) {
+                    startGame();
+                } else if (QUIT.equalsIgnoreCase(choice)) {
+                    READER.close();
+                    break;
+                } else {
+                    System.out.println("Попробуйте еще раз.");
+                }
             } else {
-                System.out.println("Попробуйте еще раз.");
+                System.out.println("Ввод был остановлен (вероятно через сочетание Ctrl + D");
+                break;
             }
-
         }
 
     }
 
-    public static void loadWords(String path) throws IOException {
+    private static void loadWords(String path){
         try (BufferedReader file = new BufferedReader(new FileReader(path))) {
             String line;
             while ((line = file.readLine()) != null) {
-                WORD_LIST.add(line);
+                WORDS.add(line);
             }
+        } catch (IOException e){
+            throw new RuntimeException(e);
         }
     }
 
-    public static void startGame() throws IOException {
+    private static void startGame() throws IOException {
         // getting random word
         Random random = new Random();
-        int x = random.nextInt(WORD_LIST.size());
-        String word = WORD_LIST.get(x);
+        int x = random.nextInt(WORDS.size());
+        String word = WORDS.get(x);
         StringBuilder maskedWord = new StringBuilder("*".repeat(word.length()));
 
-        Set<Character> usedLetters = new LinkedHashSet<>();
+        Set<String> usedLetters = new LinkedHashSet<>();
 
         StringBuilder[] hang = new StringBuilder[8];
         resetHang(hang);
@@ -66,15 +77,16 @@ public class Hangman {
 
         while (true) {
             System.out.println("Введите букву:");
-            char letter = READER.readLine().toLowerCase().charAt(0);
+            String letter = READER.readLine();
 
-            if (!isRussianLetter(letter)) {
+            if (!isGameInputValid(letter)) {
                 System.out.println("Вы ввели неправильный символ. Попробуйте еще раз.");
                 continue;
             }
 
+            letter = letter.toLowerCase();
 
-            if (word.contains(String.valueOf(letter)) && !usedLetters.contains(letter)) {
+            if (word.contains(letter) && !usedLetters.contains(letter)) {
                 System.out.println("Правильно угадал!");
                 changeMaskedWord(maskedWord, word, String.valueOf(letter));
 
@@ -105,24 +117,31 @@ public class Hangman {
 
             if (mistakes == 6) {
                 System.out.println("Увы, ты проиграл(((");
+                System.out.println("Загаданное слово было: " + word);
                 break;
             }
         }
 
     }
 
-    private static boolean isRussianLetter(char letter) {
-        letter = Character.toLowerCase(letter);
-        return (letter >= 'а' && letter <= 'я') || letter == 'ё';
+    private static boolean isGameInputValid(String letter) {
+        if (letter != null && letter.length() == 1) {
+            letter = letter.toLowerCase();
+            char symbol = letter.charAt(0);
+            return (symbol >= 'а' && symbol <= 'я') || symbol == 'ё';
+        } else {
+            return false;
+        }
+
     }
 
-    public static void printHang(StringBuilder[] hang) {
+    private static void printHang(StringBuilder[] hang) {
         for (StringBuilder i : hang) {
             System.out.println(i);
         }
     }
 
-    public static void resetHang(StringBuilder[] hang) {
+    private static void resetHang(StringBuilder[] hang) {
         hang[0] = new StringBuilder("      _______");
         hang[1] = new StringBuilder("     |/      |");
         hang[2] = new StringBuilder("     |");
@@ -133,7 +152,7 @@ public class Hangman {
         hang[7] = new StringBuilder("   __|___");
     }
 
-    public static void changeHang(int mistakes, StringBuilder[] hang) {
+    private static void changeHang(int mistakes, StringBuilder[] hang) {
         switch (mistakes) {
             case 1:
                 hang[2].append("      (_)");
@@ -157,7 +176,7 @@ public class Hangman {
         }
     }
 
-    public static void changeMaskedWord(StringBuilder maskedWord, String word, String letter) {
+    private static void changeMaskedWord(StringBuilder maskedWord, String word, String letter) {
         int index = word.indexOf(letter);
 
         while (index != -1) {
